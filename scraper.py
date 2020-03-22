@@ -1,4 +1,5 @@
 import html2text
+import json
 import lxml.html
 import re
 import requests
@@ -63,11 +64,11 @@ VERCELLI_RE = (
     re.compile(r"Vercelli (?P<deaths>\d+)"),
 )
 VCO_RE = (
-    re.compile(r"(?P<deaths>\d+) (nel Verbano-Cusio-Ossola|VCO)"),
+    re.compile(r"(?P<deaths>\d+) (nel )?(Verbano-Cusio-Ossola|VCO)"),
     re.compile(r"Verbano-Cusio-Ossola (?P<deaths>\d+)"),
 )
 FUORI_REGIONE_RE = (
-    re.compile(r"(?P<deaths>\d+) residenti fuori regione"),
+    re.compile(r"(?P<deaths>\d+) resident[ei] fuori regione"),
     re.compile(r"residenti fuori regione (?P<deaths>\d+)"),
 )
 
@@ -103,7 +104,7 @@ def parse_day_from_line(line):
     match = DATE_RE.match(line)
     if match:
         month = LOCALIZED_MONTH_TO_INT[match.group('month')]
-        return date(2020, month, int(match.group('day')))
+        return date(2020, month, int(match.group('day'))).isoformat()
     return None
 
 def parse_deaths_from_line(line):
@@ -118,22 +119,30 @@ def parse_deaths_from_line(line):
                     match = province_re.search(deaths_str)
                     if match:
                         deaths[province] = int(match.group('deaths'))
-            return tot_deaths, deaths
+            if tot_deaths != sum(deaths.values()):
+                raise ValueError("OOPS, sum don't match!: {} {} {}".format(line, tot_deaths, deaths))
+            return deaths
     return None
 
 def parse_page(page):
     lines = page.split('\n')
+    parsed_data = {}
+    day = None
     for line in lines:
-        day = parse_day_from_line(line)
-        if day:
-            print(day)
+        parsed_day = parse_day_from_line(line)
+        if parsed_day:
+            day = parsed_day
             continue
         deaths = parse_deaths_from_line(line)
         if deaths:
-            print(deaths)
+            # as we parse from latest to oldest keep the first data for each day we get
+            if day not in parsed_data:
+                parsed_data[day] = deaths
             continue
+    return parsed_data
 
 if __name__ == '__main__':
     page = download_page()
     prepared = prepare_page(page)
-    parse_page(prepared)
+    parsed = parse_page(prepared)
+    print(json.dumps(parsed, sort_keys=True))
