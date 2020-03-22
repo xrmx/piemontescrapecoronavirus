@@ -15,8 +15,14 @@ sudo apt install python3 python3-cssselect python3-lxml python3-html2text python
 Altrimenti crea un virtualenv:
 
 ```
-python3 -m venv
+python3 -m venv venv
 ./venv/bin/pip install -r requirements.txt
+```
+
+e ricorda di attivarlo quando vuoi usare lo scraper
+
+```
+. ./venv/bin/activate
 ```
 
 ## Uso
