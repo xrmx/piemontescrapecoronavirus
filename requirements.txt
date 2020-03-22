@@ -1,0 +1,4 @@
+cssselect
+html2text
+lxml
+requests
